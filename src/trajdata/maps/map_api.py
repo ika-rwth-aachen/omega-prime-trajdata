@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Dict
 
 from trajdata.maps.vec_map import VectorMap
-from trajdata.proto.vectorized_map_pb2 import VectorizedMap
+from trajdata.proto import VectorizedMap
 from trajdata.utils import map_utils
 
 

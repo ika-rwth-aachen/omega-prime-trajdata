@@ -8,11 +8,13 @@ import pandas as pd
 import tensorflow as tf
 from intervaltree import Interval, IntervalTree
 from tqdm import tqdm
-from waymo_open_dataset.protos import map_pb2 as waymo_map_pb2
-from waymo_open_dataset.protos import scenario_pb2
+from .waymo_proto import waymo
 
 from trajdata.maps import TrafficLightStatus, VectorMap
 from trajdata.maps.vec_map_elements import PedCrosswalk, Polyline, RoadLane
+
+from trajdata.data_structures.agent import AgentType
+import betterproto2
 
 WAYMO_DT: Final[float] = 0.1
 WAYMO_DATASET_NAMES = [
@@ -30,25 +32,19 @@ TEST_SCENE_LENGTH = 11
 TRAIN_20S_SCENE_LENGTH = 201
 
 GREEN = [
-    waymo_map_pb2.TrafficSignalLaneState.State.LANE_STATE_ARROW_GO,
-    waymo_map_pb2.TrafficSignalLaneState.State.LANE_STATE_GO,
+    waymo.TrafficSignalLaneStateState.LANE_STATE_ARROW_GO,
+    waymo.TrafficSignalLaneStateState.LANE_STATE_GO,
 ]
 RED = [
-    waymo_map_pb2.TrafficSignalLaneState.State.LANE_STATE_ARROW_CAUTION,
-    waymo_map_pb2.TrafficSignalLaneState.State.LANE_STATE_ARROW_STOP,
-    waymo_map_pb2.TrafficSignalLaneState.State.LANE_STATE_STOP,
-    waymo_map_pb2.TrafficSignalLaneState.State.LANE_STATE_CAUTION,
-    waymo_map_pb2.TrafficSignalLaneState.State.LANE_STATE_FLASHING_STOP,
-    waymo_map_pb2.TrafficSignalLaneState.State.LANE_STATE_FLASHING_CAUTION,
+    waymo.TrafficSignalLaneStateState.LANE_STATE_ARROW_CAUTION,
+    waymo.TrafficSignalLaneStateState.LANE_STATE_ARROW_STOP,
+    waymo.TrafficSignalLaneStateState.LANE_STATE_STOP,
+    waymo.TrafficSignalLaneStateState.LANE_STATE_CAUTION,
+    waymo.TrafficSignalLaneStateState.LANE_STATE_FLASHING_STOP,
+    waymo.TrafficSignalLaneStateState.LANE_STATE_FLASHING_CAUTION,
 ]
 
-from trajdata.data_structures.agent import (
-    Agent,
-    AgentMetadata,
-    AgentType,
-    FixedExtent,
-    VariableExtent,
-)
+
 
 
 class WaymoScenarios:
@@ -145,7 +141,7 @@ class WaymoScenarios:
 
 
 def extract_vectorized(
-    map_features: List[waymo_map_pb2.MapFeature], map_name: str, verbose: bool = False
+    map_features: List[waymo.MapFeature], map_name: str, verbose: bool = False
 ) -> VectorMap:
     vec_map = VectorMap(map_id=map_name)
 
@@ -156,11 +152,11 @@ def extract_vectorized(
     for map_feature in tqdm(
         map_features, desc="Extracting road boundaries", disable=not verbose
     ):
-        if map_feature.WhichOneof("feature_data") == "road_line":
+        if betterproto2.which_one_of(map_feature, group_name="feature_data")[0] == "road_line":
             boundaries[map_feature.id] = Polyline(
                 np.array([(pt.x, pt.y, pt.z) for pt in map_feature.road_line.polyline])
             )
-        elif map_feature.WhichOneof("feature_data") == "road_edge":
+        elif betterproto2.which_one_of(map_feature, group_name="feature_data")[0] == "road_edge":
             boundaries[map_feature.id] = Polyline(
                 np.array([(pt.x, pt.y, pt.z) for pt in map_feature.road_edge.polyline])
             )
@@ -169,7 +165,7 @@ def extract_vectorized(
     for map_feature in tqdm(
         map_features, desc="Extracting map elements", disable=not verbose
     ):
-        if map_feature.WhichOneof("feature_data") == "lane":
+        if betterproto2.which_one_of(map_feature, group_name="feature_data")[0] == "lane":
             if len(map_feature.lane.polyline) == 1:
                 # TODO: Why does Waymo have single-point polylines that
                 # aren't interpolating between others??
@@ -193,7 +189,7 @@ def extract_vectorized(
                     max_pt = np.fmax(max_pt, road_lane.right_edge.xyz.max(axis=0))
                     min_pt = np.fmin(min_pt, road_lane.right_edge.xyz.min(axis=0))
 
-        elif map_feature.WhichOneof("feature_data") == "crosswalk":
+        elif betterproto2.which_one_of(map_feature, group_name="feature_data")[0]  == "crosswalk":
             crosswalk = PedCrosswalk(
                 id=str(map_feature.id),
                 polygon=Polyline(
@@ -268,13 +264,13 @@ def extract_vectorized(
 
 
 def translate_agent_type(agent_type):
-    if agent_type == scenario_pb2.Track.ObjectType.TYPE_VEHICLE:
+    if agent_type == waymo.Track.ObjectType.TYPE_VEHICLE:
         return AgentType.VEHICLE
-    elif agent_type == scenario_pb2.Track.ObjectType.TYPE_PEDESTRIAN:
+    elif agent_type == waymo.Track.ObjectType.TYPE_PEDESTRIAN:
         return AgentType.PEDESTRIAN
-    elif agent_type == scenario_pb2.Track.ObjectType.TYPE_CYCLIST:
+    elif agent_type == waymo.Track.ObjectType.TYPE_CYCLIST:
         return AgentType.BICYCLE
-    elif agent_type == scenario_pb2.Track.ObjectType.OTHER:
+    elif agent_type == waymo.Track.ObjectType.OTHER:
         return AgentType.UNKNOWN
     return -1
 
@@ -315,7 +311,7 @@ def _merge_interval_data(data1: str, data2: str) -> str:
 
 
 def split_lane_into_chunks(
-    lane: waymo_map_pb2.LaneCenter, boundaries: Dict[int, Polyline]
+    lane: waymo.LaneCenter, boundaries: Dict[int, Polyline]
 ) -> List[Tuple[Polyline, Optional[Polyline], Optional[Polyline]]]:
     boundary_intervals = IntervalTree.from_tuples(
         [
@@ -471,10 +467,10 @@ def subselect_boundary(
 
 
 def translate_lane(
-    map_feature: waymo_map_pb2.MapFeature,
+    map_feature: waymo.MapFeature,
     boundaries: Dict[int, Polyline],
 ) -> Tuple[RoadLane, Optional[Dict[int, List[bytes]]]]:
-    lane: waymo_map_pb2.LaneCenter = map_feature.lane
+    lane: waymo.LaneCenter = map_feature.lane
 
     if lane.left_boundaries or lane.right_boundaries:
         # Waymo lane boundaries are... complicated. See
@@ -539,7 +535,7 @@ def translate_lane(
 
 
 def extract_traffic_lights(
-    dynamic_states: List[scenario_pb2.DynamicMapState],
+    dynamic_states: List[waymo.DynamicMapState],
 ) -> Dict[Tuple[str, int], TrafficLightStatus]:
     ret: Dict[Tuple[str, int], TrafficLightStatus] = {}
     for i, dynamic_state in enumerate(dynamic_states):
@@ -550,7 +546,7 @@ def extract_traffic_lights(
 
 
 def translate_traffic_state(
-    state: waymo_map_pb2.TrafficSignalLaneState.State,
+    state: waymo.TrafficSignalLaneStateState,
 ) -> TrafficLightStatus:
     # TODO(bivanovic): The traffic light type doesn't align between waymo and trajdata,
     # since trajdata's TrafficLightStatus does not include a yellow light yet.

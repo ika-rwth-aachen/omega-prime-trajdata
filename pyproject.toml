@@ -13,7 +13,7 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
 ]
 name = "trajdata"
-version = "1.4.0"
+version = "1.4.1"
 authors = [{ name = "Boris Ivanovic", email = "bivanovic@nvidia.com" }]
 description = "A unified interface to many trajectory forecasting datasets."
 readme = "README.md"
@@ -31,10 +31,10 @@ dependencies = [
     "seaborn>=0.12",
     "bokeh>=3.0.3",
     "geopandas>=0.13.2",
-    "protobuf==3.19.4",
     "scipy>=1.9.0",
     "opencv-python>=4.5.0",
     "shapely>=2.0.0",
+    "betterproto2[all]"
 ]
 
 [project.optional-dependencies]
@@ -43,9 +43,15 @@ dev = ["black", "isort", "pytest", "pytest-xdist", "twine", "build"]
 interaction = ["lanelet2==1.2.1"]
 lyft = ["l5kit==1.5.0"]
 nusc = ["nuscenes-devkit==1.1.9"]
-waymo = ["tensorflow==2.11.0", "waymo-open-dataset-tf-2-11-0", "intervaltree"]
-vod = ["vod-devkit==1.1.1"]
+waymo = ["tensorflow==2.12.0", "intervaltree"]
 
 [project.urls]
 "Homepage" = "https://github.com/nvr-avg/trajdata"
 "Bug Tracker" = "https://github.com/nvr-avg/trajdata/issues"
+
+
+
+[tool.setuptools.package-data]
+'trajdata' = [
+    "src/**/*.proto"
+]
