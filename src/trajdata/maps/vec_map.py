@@ -27,7 +27,7 @@ import numpy as np
 from matplotlib.axes import Axes
 from tqdm import tqdm
 
-import trajdata.proto.vectorized_map_pb2 as map_proto
+import trajdata.proto as map_proto
 from trajdata.maps.map_kdtree import LaneCenterKDTree
 from trajdata.maps.map_strtree import MapElementSTRTree
 from trajdata.maps.traffic_light_status import TrafficLightStatus
@@ -600,7 +600,7 @@ class VectorMap:
         lanes_to_plot: List[Tuple[str, int]] = [(origin, 0)]
 
         if kwargs.get("legend", True):
-            ax.scatter([], [], label=f"Lane Endpoints", color="k")
+            ax.scatter([], [], label="Lane Endpoints", color="k")
             ax.plot([], [], label=f"Origin Lane ({origin})", color=viridis(0))
             for h in range(1, num_hops + 1):
                 ax.plot(

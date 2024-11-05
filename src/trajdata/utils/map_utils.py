@@ -14,7 +14,7 @@ import dill
 import numpy as np
 from scipy.stats import circmean
 
-import trajdata.proto.vectorized_map_pb2 as map_proto
+import trajdata.proto as map_proto
 from trajdata.utils import arr_utils
 
 MM_PER_M: Final[float] = 1000
@@ -148,7 +148,7 @@ def proto_to_np(polyline: map_proto.Polyline, incl_heading: bool = True) -> np.n
         ret_pts = np.concatenate((ret_pts, headings[:, np.newaxis]), axis=1)
     elif incl_heading:
         raise ValueError(
-            f"Polyline must have heading, but it does not (polyline.h_rad is empty)."
+            "Polyline must have heading, but it does not (polyline.h_rad is empty)."
         )
 
     return ret_pts
@@ -273,7 +273,7 @@ def load_vector_map(vector_map_path: Path) -> map_proto.VectorizedMap:
 
     # Saving the vectorized map data.
     with open(vector_map_path, "rb") as f:
-        vec_map.ParseFromString(f.read())
+        vec_map = vec_map.parse(f.read())
 
     return vec_map
 

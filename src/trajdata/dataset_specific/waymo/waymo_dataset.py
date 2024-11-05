@@ -1,4 +1,3 @@
-import os
 from collections import defaultdict
 from functools import partial
 from pathlib import Path
@@ -8,7 +7,7 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 import tqdm
-from waymo_open_dataset.protos.scenario_pb2 import Scenario
+from .waymo_proto import waymo
 
 from trajdata.caching import EnvCache, SceneCache
 from trajdata.data_structures import (
@@ -19,13 +18,9 @@ from trajdata.data_structures import (
     SceneTag,
 )
 from trajdata.data_structures.agent import (
-    Agent,
-    AgentMetadata,
     AgentType,
-    FixedExtent,
     VariableExtent,
 )
-from trajdata.data_structures.scene_tag import SceneTag
 from trajdata.dataset_specific.raw_dataset import RawDataset
 from trajdata.dataset_specific.scene_records import WaymoSceneRecord
 from trajdata.dataset_specific.waymo import waymo_utils
@@ -35,12 +30,6 @@ from trajdata.dataset_specific.waymo.waymo_utils import (
     translate_agent_type,
 )
 from trajdata.maps import VectorMap
-from trajdata.proto.vectorized_map_pb2 import (
-    MapElement,
-    PedCrosswalk,
-    RoadLane,
-    VectorizedMap,
-)
 from trajdata.utils import arr_utils
 from trajdata.utils.parallel_utils import parallel_apply
 
@@ -176,9 +165,9 @@ class WaymoDataset(RawDataset):
             [str(self.dataset_obj.get_filename(scene.raw_data_idx))],
             compression_type="",
         )
-        scenario: Scenario = Scenario()
+        scenario: waymo.Scenario = waymo.Scenario()
         for data in dataset:
-            scenario.ParseFromString(bytearray(data.numpy()))
+            scenario = scenario.parse(data.numpy())
             break
 
         agent_ids = []
@@ -338,9 +327,9 @@ class WaymoDataset(RawDataset):
             [str(self.dataset_obj.get_filename(data_idx))], compression_type=""
         )
 
-        scenario: Scenario = Scenario()
+        scenario: waymo.Scenario = waymo.Scenario()
         for data in dataset:
-            scenario.ParseFromString(bytearray(data.numpy()))
+            scenario = scenario.parse(data.numpy())
             break
 
         vector_map: VectorMap = waymo_utils.extract_vectorized(

@@ -1,3 +1,4 @@
+
 # trajdata: A Unified Interface to Multiple Human Trajectory Datasets
 
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
@@ -5,6 +6,12 @@
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![DOI](https://zenodo.org/badge/488789438.svg)](https://zenodo.org/badge/latestdoi/488789438)
 [![PyPI version](https://badge.fury.io/py/trajdata.svg)](https://badge.fury.io/py/trajdata)
+
+## Generate new python stubs from proto
+```
+uv pip install betterproto2-compiler grpcio-tools
+python gen_proto.py
+```
 
 ### Announcements
 
