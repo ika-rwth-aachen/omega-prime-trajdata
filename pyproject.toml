@@ -19,7 +19,7 @@ description = "A unified interface to many trajectory forecasting datasets."
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
-    "numpy>=1.19",
+    "numpy>=2.0",
     "tqdm>=4.62",
     "matplotlib>=3.5",
     "dill>=0.3.4",
@@ -43,7 +43,7 @@ dev = ["black", "isort", "pytest", "pytest-xdist", "twine", "build"]
 interaction = ["lanelet2==1.2.1"]
 lyft = ["l5kit==1.5.0"]
 nusc = ["nuscenes-devkit==1.1.9"]
-waymo = ["tensorflow==2.12.0", "intervaltree"]
+waymo = ["tensorflow>=2.19.0", "intervaltree"]
 
 [project.urls]
 "Homepage" = "https://github.com/nvr-avg/trajdata"
