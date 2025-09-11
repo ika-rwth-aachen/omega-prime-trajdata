@@ -19,8 +19,6 @@ syntax = "proto2";
 
 package waymo.open_dataset;
 
-import "waymo_open_dataset/protos/camera_tokens.proto";
-import "waymo_open_dataset/protos/compressed_lidar.proto";
 import "waymo_open_dataset/protos/map.proto";
 
 message ObjectState {
@@ -141,17 +139,6 @@ message Scenario {
   // suggestion of objects to train on.
   repeated RequiredPrediction tracks_to_predict = 11;
 
-  // Per time step Lidar data. This contains lidar up to the current time step
-  // such that compressed_frame_laser_data[i] corresponds to the states at
-  // timestamps_seconds[i] where i <= current_time_index.
-  // This field is not populated in all versions of the dataset.
-  repeated CompressedFrameLaserData compressed_frame_laser_data = 12;
-
-  // Per time step camera tokens. This contains camera tokens up to the current
-  // time step such that frame_camera_tokens[i] corresponds to the states at
-  // timestamps_seconds[i] where i <= current_time_index.
-  // This field is not populated in all versions of the dataset.
-  repeated FrameCameraTokens frame_camera_tokens = 13;
 
 
 }

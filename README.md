@@ -7,11 +7,9 @@
 [![DOI](https://zenodo.org/badge/488789438.svg)](https://zenodo.org/badge/latestdoi/488789438)
 [![PyPI version](https://badge.fury.io/py/trajdata.svg)](https://badge.fury.io/py/trajdata)
 
-## Generate new python stubs from proto
-```
-uv pip install betterproto2-compiler grpcio-tools
-python gen_proto.py
-```
+## Whats different in this fork
+
+This fork uses [betterproto2](https://github.com/betterproto/python-betterproto2) to work with protobuf files and it generates code from the proto files on installation. This has the benefit that it reduces the likelihood of dependency conflict on installation.
 
 ### Announcements
 
