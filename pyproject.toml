@@ -2,9 +2,12 @@
 profile = "black"
 
 [build-system]
-requires = ["setuptools>=58", "wheel"]
-build-backend = "setuptools.build_meta"
-
+requires = ["hatchling", "hatch-build-scripts", "ruff", "betterproto2_compiler","grpcio-tools"]
+build-backend = "hatchling.build"
+[[tool.hatch.build.hooks.build-scripts.scripts]]
+commands = [
+    "python gen_protos.py"
+]
 [project]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -34,7 +37,7 @@ dependencies = [
     "scipy>=1.9.0",
     "opencv-python>=4.5.0",
     "shapely>=2.0.0",
-    "betterproto2[all]"
+    "betterproto2 (>=0.5,<1)"
 ]
 
 [project.optional-dependencies]
