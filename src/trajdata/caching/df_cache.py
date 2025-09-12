@@ -780,7 +780,7 @@ class DataFrameCache(SceneCache):
 
         # Saving the vectorized map data.
         with open(vector_map_path, "wb") as f:
-            f.write(vector_map.to_proto().SerializeToString())
+            f.write(bytes(vector_map.to_proto()))
 
         # Saving precomputed map element kdtrees.
         with open(kdtrees_path, "wb") as f:

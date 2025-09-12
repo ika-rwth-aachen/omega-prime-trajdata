@@ -89,15 +89,18 @@ def populate_lane_polylines(
         right_pts (np.ndarray): _description_
     """
     compressed_mid_pts: np.ndarray = compress_values(road_lane_py.center.xyz - origin)
-    new_lane_proto.center.dx_mm.extend(compressed_mid_pts[:, 0].tolist())
-    new_lane_proto.center.dy_mm.extend(compressed_mid_pts[:, 1].tolist())
-    new_lane_proto.center.dz_mm.extend(compressed_mid_pts[:, 2].tolist())
-    new_lane_proto.center.h_rad.extend(road_lane_py.center.h.tolist())
+    new_lane_proto.center = map_proto.Polyline(
+        dx_mm=compressed_mid_pts[:, 0].tolist(),
+        dy_mm=compressed_mid_pts[:, 1].tolist(),
+        dz_mm=compressed_mid_pts[:, 2].tolist(),
+        h_rad=road_lane_py.center.h.tolist(),
+    )
 
     if road_lane_py.left_edge is not None:
         compressed_left_pts: np.ndarray = compress_values(
             road_lane_py.left_edge.xyz - origin
         )
+        new_lane_proto.left_boundary = map_proto.Polyline()
         new_lane_proto.left_boundary.dx_mm.extend(compressed_left_pts[:, 0].tolist())
         new_lane_proto.left_boundary.dy_mm.extend(compressed_left_pts[:, 1].tolist())
         new_lane_proto.left_boundary.dz_mm.extend(compressed_left_pts[:, 2].tolist())
@@ -106,6 +109,7 @@ def populate_lane_polylines(
         compressed_right_pts: np.ndarray = compress_values(
             road_lane_py.right_edge.xyz - origin
         )
+        new_lane_proto.right_boundary = map_proto.Polyline()
         new_lane_proto.right_boundary.dx_mm.extend(compressed_right_pts[:, 0].tolist())
         new_lane_proto.right_boundary.dy_mm.extend(compressed_right_pts[:, 1].tolist())
         new_lane_proto.right_boundary.dz_mm.extend(compressed_right_pts[:, 2].tolist())

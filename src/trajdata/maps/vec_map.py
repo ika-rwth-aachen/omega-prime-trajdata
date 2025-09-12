@@ -20,7 +20,7 @@ from typing import (
     Union,
     overload,
 )
-
+import betterproto2
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
@@ -94,7 +94,8 @@ class VectorMap:
     ) -> None:
         road_lane: RoadLane
         for elem_id, road_lane in self.elements[MapElementType.ROAD_LANE].items():
-            new_element: map_proto.MapElement = vectorized_map.elements.add()
+            new_element = map_proto.MapElement(road_lane=map_proto.RoadLane())
+            vectorized_map.elements.append(new_element)
             new_element.id = elem_id.encode()
 
             new_lane: map_proto.RoadLane = new_element.road_lane
@@ -119,10 +120,14 @@ class VectorMap:
     ) -> None:
         road_area: RoadArea
         for elem_id, road_area in self.elements[MapElementType.ROAD_AREA].items():
-            new_element: map_proto.MapElement = vectorized_map.elements.add()
+            new_element = map_proto.MapElement()
+            vectorized_map.elements.append(new_element)
             new_element.id = elem_id.encode()
 
-            new_area: map_proto.RoadArea = new_element.road_area
+            new_element.road_area = map_proto.RoadArea()
+            new_area = new_element.road_area
+            new_area.exterior_polygon = map_proto.Polyline()
+            #road_area.exterior_polygon = map_proto.Polyline()
             map_utils.populate_polygon(
                 new_area.exterior_polygon,
                 road_area.exterior_polygon.xyz,
@@ -131,7 +136,8 @@ class VectorMap:
 
             hole: Polyline
             for hole in road_area.interior_holes:
-                new_hole: map_proto.Polyline = new_area.interior_holes.add()
+                new_hole = map_proto.Polyline()
+                new_area.interior_holes.append(new_hole)
                 map_utils.populate_polygon(
                     new_hole,
                     hole.xyz,
@@ -145,12 +151,16 @@ class VectorMap:
         for elem_id, ped_crosswalk in self.elements[
             MapElementType.PED_CROSSWALK
         ].items():
-            new_element: map_proto.MapElement = vectorized_map.elements.add()
+            new_element = map_proto.MapElement()
+            new_element.ped_crosswalk = map_proto.PedCrosswalk(
+                    polygon=map_proto.Polyline()
+                )
+            
+            vectorized_map.elements.append(new_element)
             new_element.id = elem_id.encode()
 
-            new_crosswalk: map_proto.PedCrosswalk = new_element.ped_crosswalk
             map_utils.populate_polygon(
-                new_crosswalk.polygon,
+                new_element.ped_crosswalk.polygon,
                 ped_crosswalk.polygon.xyz,
                 shifted_origin,
             )
@@ -160,10 +170,13 @@ class VectorMap:
     ) -> None:
         ped_walkway: PedWalkway
         for elem_id, ped_walkway in self.elements[MapElementType.PED_WALKWAY].items():
-            new_element: map_proto.MapElement = vectorized_map.elements.add()
+            new_element = map_proto.MapElement()
+            vectorized_map.elements.append(new_element)
             new_element.id = elem_id.encode()
 
-            new_walkway: map_proto.PedWalkway = new_element.ped_walkway
+            new_walkway = map_proto.PedWalkway()
+            new_element.ped_walkway = new_walkway
+            new_walkway.polygon = map_proto.Polyline()
             map_utils.populate_polygon(
                 new_walkway.polygon,
                 ped_walkway.polygon.xyz,
@@ -173,7 +186,8 @@ class VectorMap:
     def to_proto(self) -> map_proto.VectorizedMap:
         output_map = map_proto.VectorizedMap()
         output_map.name = self.map_id
-
+        output_map.min_pt = map_proto.Point()
+        output_map.max_pt = map_proto.Point()
         (
             output_map.min_pt.x,
             output_map.min_pt.y,
@@ -184,6 +198,7 @@ class VectorMap:
         ) = self.extent
 
         shifted_origin: np.ndarray = self.extent[:3]
+        output_map.shifted_origin = map_proto.Point()
         (
             output_map.shifted_origin.x,
             output_map.shifted_origin.y,
@@ -222,7 +237,7 @@ class VectorMap:
         map_elem: MapElement
         for map_elem in vec_map.elements:
             elem_id: str = map_elem.id.decode()
-            if incl_road_lanes and map_elem.HasField("road_lane"):
+            if incl_road_lanes and betterproto2.which_one_of(map_elem, group_name="element_data")[0]=="road_lane":
                 road_lane_obj: map_proto.RoadLane = map_elem.road_lane
 
                 center_pl: Polyline = Polyline(
@@ -232,7 +247,7 @@ class VectorMap:
                 # We do not care for the heading of the left and right edges
                 # (only the center matters).
                 left_pl: Optional[Polyline] = None
-                if road_lane_obj.HasField("left_boundary"):
+                if road_lane_obj.left_boundary:
                     left_pl = Polyline(
                         map_utils.proto_to_np(
                             road_lane_obj.left_boundary, incl_heading=False
@@ -241,7 +256,7 @@ class VectorMap:
                     )
 
                 right_pl: Optional[Polyline] = None
-                if road_lane_obj.HasField("right_boundary"):
+                if road_lane_obj.right_boundary is not None:
                     right_pl = Polyline(
                         map_utils.proto_to_np(
                             road_lane_obj.right_boundary, incl_heading=False
@@ -277,7 +292,7 @@ class VectorMap:
                 )
                 map_elem_dict[MapElementType.ROAD_LANE][elem_id] = curr_lane
 
-            elif incl_road_areas and map_elem.HasField("road_area"):
+            elif incl_road_areas and betterproto2.which_one_of(map_elem, group_name="element_data")[0]=="road_area":
                 road_area_obj: map_proto.RoadArea = map_elem.road_area
 
                 exterior: Polyline = Polyline(
@@ -288,7 +303,7 @@ class VectorMap:
                 )
 
                 interior_holes: List[Polyline] = list()
-                interior_hole: map_proto.Polyline
+                interior_hole: map_proto.Polyline()
                 for interior_hole in road_area_obj.interior_holes:
                     interior_holes.append(
                         Polyline(
@@ -300,7 +315,7 @@ class VectorMap:
                 curr_area = RoadArea(elem_id, exterior, interior_holes)
                 map_elem_dict[MapElementType.ROAD_AREA][elem_id] = curr_area
 
-            elif incl_ped_crosswalks and map_elem.HasField("ped_crosswalk"):
+            elif incl_ped_crosswalks and betterproto2.which_one_of(map_elem, group_name="element_data")[0]=="ped_crosswalk":
                 ped_crosswalk_obj: map_proto.PedCrosswalk = map_elem.ped_crosswalk
 
                 polygon_vertices: Polyline = Polyline(
@@ -311,7 +326,7 @@ class VectorMap:
                 curr_area = PedCrosswalk(elem_id, polygon_vertices)
                 map_elem_dict[MapElementType.PED_CROSSWALK][elem_id] = curr_area
 
-            elif incl_ped_walkways and map_elem.HasField("ped_walkway"):
+            elif incl_ped_walkways and  betterproto2.which_one_of(map_elem, group_name="element_data")[0]=="ped_walkway":
                 ped_walkway_obj: map_proto.PedCrosswalk = map_elem.ped_walkway
 
                 polygon_vertices: Polyline = Polyline(
