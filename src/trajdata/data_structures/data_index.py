@@ -19,6 +19,7 @@ class DataIndex:
         ],
         verbose: bool = False,
     ) -> None:
+        print(data_index)
         scene_paths, full_index_len, _ = zip(*data_index)
 
         self._cumulative_lengths: np.ndarray = np.concatenate(
