@@ -39,7 +39,8 @@ dependencies = [
     "scipy>=1.9.0",
     "opencv-python>=4.5.0",
     "shapely>=2.0.0",
-    "betterproto2 (>=0.5,<1)"
+    "betterproto2 (>=0.5,<1)",
+    "omega-prime>=0.1.19"
 ]
 
 [project.optional-dependencies]
