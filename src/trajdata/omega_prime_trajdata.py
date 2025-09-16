@@ -1,14 +1,16 @@
 from trajdata import UnifiedDataset
 from torch.utils.data import DataLoader
 import numpy as np
-import tensorflow as tf
 import betterosi
 import shapely
 from trajdata.maps.vec_map_elements import MapElementType
-from pathlib import Path
-from trajdata import MapAPI, VectorMap
 from trajdata import AgentType
 import omega_prime
+from omega_prime.converters.converter import DatasetConverter
+from typing import Annotated
+import typer
+from pathlib import Path
+from tqdm.auto import tqdm
 
 
 def is_intersection(lane, road_lane_elements):
@@ -130,14 +132,10 @@ def get_polyline_midpoint(polyline) -> np.ndarray:
 
 
 
-def map_for_secenario(dataset, dataset_name, map_gts, s):
-    if s.location not in map_gts:
-        cache_path = Path(dataset.cache_path).expanduser()
-        map_api = MapAPI(cache_path)
-
-        map: VectorMap = map_api.get_map(f"{dataset_name}:{s.location}")
-
-        tl_status = map.traffic_light_status
+def map_for_scenario(map, map_name, map_cache):
+    if map_name not in map_cache:
+        print(map_name)
+        _ = map.traffic_light_status
         pedestrian_crosswalk_elements = dict(map.elements[MapElementType.PED_CROSSWALK].items())
         road_lane_elements = dict(map.elements[MapElementType.ROAD_LANE].items())
 
@@ -161,6 +159,17 @@ def map_for_secenario(dataset, dataset_name, map_gts, s):
                 )
                 for crosswalk in pedestrian_crosswalk_elements.values()
             ],
+            lane_boundary=[betterosi.LaneBoundary( # right lane
+                id=betterosi.Identifier(value=b_id),
+                boundary_line=[betterosi.LaneBoundaryBoundaryPoint(position=betterosi.Vector3D(x=x, y=y, z=y)) for x,y,z in polyline.points],
+                classification=betterosi.LaneBoundaryClassification(
+                    type=betterosi.LaneBoundaryClassificationType.SOLID_LINE,
+                    color=betterosi.LaneBoundaryClassificationColor.WHITE
+                )
+            ) for lane in road_lane_elements.values() for b_id, polyline in [
+                (mapped_lid[lane.id]*2, lane.right_edge),
+                (mapped_lid[lane.id]*2+1, lane.left_edge)
+            ] if polyline is not None],
             lane=[
                 betterosi.Lane(
                     classification=betterosi.LaneClassification(
@@ -168,6 +177,8 @@ def map_for_secenario(dataset, dataset_name, map_gts, s):
                             betterosi.Vector3D(x=float(x), y=float(y), z=float(z))
                             for x, y, z, yaw in lane.center.points
                         ],
+                        right_lane_boundary_id = [betterosi.Identifier(value=mapped_lid[lane.id]*2)] if lane.right_edge is not None else [],
+                        left_lane_boundary_id = [betterosi.Identifier(value=mapped_lid[lane.id]*2+1)] if lane.left_edge is not None else [],
                         centerline_is_driving_direction=True,  # checked and the centerline is always in driving direction
                         type=betterosi.LaneClassificationType.TYPE_INTERSECTION
                         if lane.is_intersection
@@ -192,9 +203,8 @@ def map_for_secenario(dataset, dataset_name, map_gts, s):
                 for lane in road_lane_elements.values()
             ],
         )
-        map_gts[s.location] = map_gt
-        return map_gt
-    return map_gts[s.location]
+        map_cache[map_name] = map_gt
+    return map_cache[map_name]
 
 
 
@@ -212,9 +222,10 @@ agentType2osi_type = {
     AgentType.MOTORCYCLE: betterosi.MovingObjectType.VEHICLE,
 }
 def from_batch_info(i, agent_type, extent, state,transform):
-    xy = tf.tensordot(state[0:2], transform[:2,:2].T, axes=1)+transform[:2,2]
-    vel = tf.tensordot(state[2:4], transform[:2,:2], axes=1)
-    acc = tf.tensordot(state[4:6], transform[:2,:2], axes=1)
+    xy_h = np.array([state[0], state[1], 1.0])
+    xy = np.dot(transform, xy_h)[:2]
+    vel = np.dot(transform[:2,:2], state[2:4])
+    acc = np.dot(transform[:2,:2], state[4:6])
     agent_type = AgentType(int(agent_type))
     t = agentType2osi_type[agent_type]
     kwargs = {}
@@ -222,79 +233,151 @@ def from_batch_info(i, agent_type, extent, state,transform):
         kwargs['vehicle_classification'] = betterosi.MovingObjectVehicleClassification(
             type=agentType2osi_subtype[agent_type]
         )
+    length = np.nanmax([extent[0],.1])
+    width = np.nanmax([extent[1],.1])
+    height= np.nanmax([extent[2],.1])
     return betterosi.MovingObject(
                 id=betterosi.Identifier(value=i),
                 type=t,
                 base=betterosi.BaseMoving(
-                    dimension=betterosi.Dimension3D(length=max(extent[0],.1), width=max(extent[1],.1), height=extent[2]),
-                    position=betterosi.Vector3D(x=xy[0], y=xy[1], z=0),
-                    orientation=betterosi.Orientation3D(roll=0, pitch=0, yaw=np.arcsin(state[6])+np.arccos(transform[0][0])),
-                    velocity=betterosi.Vector3D(x=vel[0], y=vel[1], z=0),
-                    acceleration=betterosi.Vector3D(x=acc[0], y=acc[1], z=0),
+                    dimension=betterosi.Dimension3D(length=float(length), width=float(width), height=float(height)),
+                    position=betterosi.Vector3D(x=float(xy[0]), y=float(xy[1]), z=0),
+                    orientation=betterosi.Orientation3D(roll=0, pitch=0, yaw=float(np.arcsin(state[6])+np.arccos(transform[0,0]))),
+                    velocity=betterosi.Vector3D(x=float(vel[0]), y=float(vel[1]), z=0),
+                    acceleration=betterosi.Vector3D(x=float(acc[0]), y=float(acc[1]), z=0),
                 ),
                 **kwargs
             )
+def agentbatchelement_to_omega(name, batch_element, map_cache):
+    gts = []
+    t_index = 0
+    for [
+        agent, extent, neigh, neigh_extents, neigh_len
+    ] in [
+        [batch_element.agent_history_np, batch_element.agent_history_extent_np, batch_element.neighbor_histories, batch_element.neighbor_history_extents, batch_element.neighbor_history_lens_np],
+        [batch_element.agent_future_np, batch_element.agent_future_extent_np, batch_element.neighbor_futures, batch_element.neighbor_future_extents, batch_element.neighbor_future_lens_np]
+    ]:
+        transform = np.linalg.inv(batch_element.agent_from_world_tf)
+        for ti in range(agent.shape[0]):
+            objs = []
+            objs.append(from_batch_info(
+                0,
+                agent_type=batch_element.agent_type,
+                extent=extent[ti],
+                state=agent[ti],
+                transform=transform
+            ))
+            for i in range(len(batch_element.neighbor_types_np)):
+                if ti < neigh_len[i] and not np.isnan(neigh[i][ti][0]):
+                    objs.append(from_batch_info(
+                        i+1,
+                        agent_type=batch_element.neighbor_types_np[i],
+                        extent=neigh_extents[i][ti],
+                        state=neigh[i][ti],
+                        transform=transform
+                    ))
+            nanos = t_index * batch_element.dt * 1e9
+            gts.append(betterosi.GroundTruth(
+                version=betterosi.InterfaceVersion(version_major=3, version_minor=7, version_patch=9),
+                timestamp=betterosi.Timestamp(seconds=int(nanos // int(1e9)), nanos=int(nanos % int(1e9))),
+                host_vehicle_id=betterosi.Identifier(value=0),
+                moving_object=objs,
+            ))
+            t_index += 1
+    map_gt = map_for_scenario(batch_element.vec_map, batch_element.vec_map.map_id, map_cache)
+    gts[0].lane = map_gt.lane
+    gts[0].road_marking = map_gt.road_marking
+    r = omega_prime.Recording.from_osi_gts(gts)
+    try:
+        r.map = omega_prime.map.MapOsi.create(gts[0])
+    except RuntimeError:
+        r.map = omega_prime.map.MapOsiCenterline.create(gts[0])
+    return r
 
-def batch_to_gt_lists(batch, map_gts, dataset, dataset_name):
-    for bi in range(len(batch.neigh_types)):
-        s = dataset.get_scene(batch.scene_ts)
-        map_gt = map_for_secenario(dataset, dataset_name, map_gts, s)
-        gts = []
-        t_index = 0
-        for [
-            agent, extent, neigh, neigh_extents, neigh_len
-        ] in [
-            [batch.agent_hist, batch.agent_hist_extent, batch.neigh_hist, batch.neigh_hist_extents, batch.neigh_hist_len],
-            [batch.agent_fut, batch.agent_fut_extent, batch.neigh_fut, batch.neigh_fut_extents, batch.neigh_fut_len]
-        ]:
-            transform = np.linalg.inv(batch.agents_from_world_tf[bi])
-            for ti in range(agent[bi].size(0)):
-                objs = []
-                objs.append(from_batch_info(
-                    0,
-                    agent_type=batch.agent_type[0],
-                    extent=extent[bi][ti],
-                    state=agent[bi][ti],
-                    transform=transform
-                ))
-                for i in range(batch.num_neigh[bi]):
-                    if ti < neigh_len[bi][i]:
-                        objs.append(from_batch_info(
-                            i+1,
-                            agent_type=batch.neigh_types[bi][i],
-                            extent=neigh_extents[bi][i][ti],
-                            state=neigh[bi][i][ti],
-                            transform=transform
-                        ))
-                nanos = t_index * batch.dt[bi] * 1e9
-                gts.append(betterosi.GroundTruth(
-                    version=betterosi.InterfaceVersion(version_major=3, version_minor=7, version_patch=9),
-                    timestamp=betterosi.Timestamp(seconds=int(nanos // int(1e9)), nanos=int(nanos % int(1e9))),
-                    host_vehicle_id=betterosi.Identifier(value=0),
-                    moving_object=objs,
-                ))
-                t_index += 1
-        gts[0].lane = map_gt.lane
-        gts[0].road_marking = map_gt.road_marking
-        yield (s.name, gts)
 
-def yield_omegas(map_cache, dataset_name='nusc_mini', dataset_dir='../nuscene_mini/'):
-    dataset = UnifiedDataset(
-        desired_data=[dataset_name],
-        data_dirs={  # Remember to change this to match your filesystem!
-            dataset_name: dataset_dir
-        },
-    )
-    dataloader = DataLoader(
-        dataset,
-        batch_size=1,
-        shuffle=False,
-        collate_fn=dataset.get_collate_fn(),
-        num_workers=0#os.cpu_count(), # This can be set to 0 for single-threaded loading, if desired.
-    )
-    for i, batch in enumerate(dataloader):
-        gt_lists = batch_to_gt_lists(batch, map_cache, dataset, dataset_name)
-        for name, gts in gt_lists:
-            r = omega_prime.Recording.from_osi_gts(gts)
-            r.map = omega_prime.map.MapOsiCenterline.create(gts[0])
-            yield (name, r)
+
+class TrajdataConverter(DatasetConverter):
+    def __init__(
+        self, 
+        dataset_path: str, 
+        out_path: str, 
+        dataset_name,  
+        keep_in_memory=True,
+        n_workers=0,
+        preload_maps: bool = True
+    ) -> None:
+        super().__init__(dataset_path, out_path, n_workers=n_workers)
+        self.dataset_name=dataset_name
+        self.map_cache = {}
+        self.dataset = UnifiedDataset(
+            desired_data=[dataset_name],
+            data_dirs={  # Remember to change this to match your filesystem!
+                dataset_name: dataset_path
+            },
+            incl_vector_map=True,
+            vector_map_params = {
+                "incl_road_lanes": True,
+                "incl_road_areas": False,
+                "incl_ped_crosswalks": False,
+                "incl_ped_walkways": False,
+                # Collation can be quite slow if vector maps are included,
+                # so we do not unless the user requests it.
+                "collate": True,
+                # Whether loaded maps should be stored in memory (memoized) for later re-use.
+                # For datasets which provide full maps ahead-of-time (i.e., all except Waymo),
+                # this should be True. However, for Waymo it should be False because maps
+                # are already partitioned geographically and keeping them around significantly grows memory.
+                "keep_in_memory": keep_in_memory,
+            }
+        )
+        self.dataloader = DataLoader(
+            self.dataset,
+            batch_size=1,
+            shuffle=True,
+            collate_fn=self.dataset.get_collate_fn(),
+            num_workers=n_workers, # This can be set to 0 for single-threaded loading, if desired.
+        )
+        if preload_maps:
+            for vm_name, vm in tqdm(self.dataset._map_api.maps.items(), desc='Preloading maps'):
+                map_for_scenario(vm, vm_name, self.map_cache)
+
+    def get_source_recordings(self):
+        self.len = self.dataset.num_scenes()
+        return range(self.len)
+
+    def get_recordings(self, i):
+        batch_element = self.dataset[self.dataset._data_index._cumulative_lengths[i]]
+        yield batch_element.scene_id, batch_element
+
+    def get_recording_name(self, recording) -> str:
+        name, _ = recording
+        return name
+
+    def to_omega_prime_recording(self, recording):
+        name, batch_element = recording
+        return agentbatchelement_to_omega(name, batch_element, self.map_cache)
+
+    
+    @classmethod
+    def convert_cli(
+        cls,
+        dataset_path: Annotated[
+            Path,
+            typer.Argument(exists=True, dir_okay=True, file_okay=True, readable=True, help="Root of the dataset"),
+        ],
+        output_path: Annotated[
+            Path,
+            typer.Argument(
+                file_okay=False, writable=True, help="In which folder to write the created omega-prime files"
+            ),
+        ],
+        dataset_name: Annotated[str, typer.Argument(help='trajdata name of the dataset (see https://github.com/NVlabs/trajdata?tab=readme-ov-file#supported-datasets)')],  
+        skip_existing: Annotated[bool, typer.Option(help="Only convert not yet converted files")] = False,
+        write_log: Annotated[bool, typer.Option(help="Write a log file with the conversion process")] = False,
+
+        keep_map_in_memory: Annotated[bool, typer.Option(help="Turn off for waymo dataset since they have map for each scene.")]=True,
+    ):
+        Path(output_path).mkdir(exist_ok=True)
+        cls(dataset_path=dataset_path, out_path=output_path, n_workers=0, keep_in_memory=keep_map_in_memory, dataset_name=dataset_name, preload_maps=keep_map_in_memory).convert(
+            save_as_parquet=False, skip_existing=skip_existing, write_log=write_log, n_workers=1
+        )
