@@ -1,15 +1,34 @@
 
-# trajdata: A Unified Interface to Multiple Human Trajectory Datasets
-
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat&labelColor=ef8336)](https://pycqa.github.io/isort/)
-[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![DOI](https://zenodo.org/badge/488789438.svg)](https://zenodo.org/badge/latestdoi/488789438)
-[![PyPI version](https://badge.fury.io/py/trajdata.svg)](https://badge.fury.io/py/trajdata)
+# omega-prime-trajdata - A Fork of trajdata: A Unified Interface to Multiple Human Trajectory Datasets
 
 ## Whats different in this fork
 
-This fork uses [betterproto2](https://github.com/betterproto/python-betterproto2) to work with protobuf files and it generates code from the proto files on installation. This has the benefit that it reduces the likelihood of dependency conflict on installation.
+This fork uses [betterproto2](https://github.com/betterproto/python-betterproto2) to work with protobuf files and it generates code from the proto files on installation. This has the benefit that it reduces the likelihood of dependency conflicts on installation.
+Also a Converter to the omega-prime specification is included. 
+
+`uv pip install omega-prime-trajdata[av2,interaction,nusc,waymo,vod]`
+
+(`lyft` not supported currently since l5kit depencies conflict with the other packages. `interaction` installs `lanelet2` wich is only available up to python 3.12 and on linux. You could try to install `lanelet2x` instead on windows.
+
+Run conversion with:
+
+`omega-prime from-trajdata ./dataset_path ./output_path dataset_name`
+
+`dataset_name` corresponds to the name in the dataset table below. E.g., for the `nusc_mini` dataset:
+
+
+`omega-prime from-trajdata ./nusc_mini ./output_folder nusc_mini`
+
+From python you can do the following:
+```python
+import omega_prime
+from trajdata import TrajdataConverter
+
+t = TrajdataConverter()
+
+loader: iter[omega_prime.Recording] = t.yield_recordings()
+
+```
 
 ### Announcements
 

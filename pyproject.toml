@@ -8,19 +8,21 @@ build-backend = "hatchling.build"
 commands = [
     "python gen_protos.py"
 ]
+
 [project]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.12",
     "License :: OSI Approved :: Apache Software License",
 ]
-name = "trajdata"
+name = "omega-prime-trajdata"
+
 version = "1.4.1"
-authors = [{ name = "Boris Ivanovic", email = "bivanovic@nvidia.com" }]
-description = "A unified interface to many trajectory forecasting datasets."
+authors = [{ name = "Michael Schuldes", email = "michael.schuldes@rwth-aachen.de" }]
+description = "A fork of trajdata using betterproto2 and including a converter to omega-prime"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 dependencies = [
     "numpy>=2.0",
     "tqdm>=4.62",
@@ -44,8 +46,8 @@ dependencies = [
 av2 = ["av2==0.2.1"]
 dev = ["black", "isort", "pytest", "pytest-xdist", "twine", "build"]
 interaction = ["lanelet2"]
-lyft = ["l5kit==1.5.0"]
-nusc = ["nuscenes-devkit"]
+#lyft = ["l5kit==1.5.0"]
+nusc = ["nuscenes-devkit>=1.2.0"]
 waymo = ["tensorflow>=2.19.0", "intervaltree"]
 vod = ["vod-devkit==1.1.1"]
 
@@ -54,8 +56,11 @@ vod = ["vod-devkit==1.1.1"]
 "Bug Tracker" = "https://github.com/nvr-avg/trajdata/issues"
 
 
+[project.entry-points.'omega_prime.plugins.converter']
+from-trajdata = 'trajdata:TrajdataConverter'
 
-[tool.setuptools.package-data]
-'trajdata' = [
-    "src/**/*.proto"
+[tool.hatch.build.targets.wheel]
+# Map the actual package name to the source directory
+packages = [
+    "src/trajdata"
 ]
