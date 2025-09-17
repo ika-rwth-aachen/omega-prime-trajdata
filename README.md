@@ -1,10 +1,12 @@
 
 # omega-prime-trajdata - A Fork of trajdata: A Unified Interface to Multiple Human Trajectory Datasets
 
-## Whats different in this fork
+This is a fork of [trajdata](github.com/NVlabs/trajdata). Modifications are under the same license as trajdata - Apache Licenese 2.0.
+
+## Whats different in this fork?
 
 This fork uses [betterproto2](https://github.com/betterproto/python-betterproto2) to work with protobuf files and it generates code from the proto files on installation. This has the benefit that it reduces the likelihood of dependency conflicts on installation.
-Also a Converter to the omega-prime specification is included. 
+In addition, a converter to the [omega-prime format](github.com/ika-rwth-aachen/omega-prime) is included. 
 
 `uv pip install omega-prime-trajdata[av2,interaction,nusc,waymo,vod]`
 
