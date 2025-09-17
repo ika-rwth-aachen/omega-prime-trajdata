@@ -26,11 +26,26 @@ From python you can do the following:
 import omega_prime
 from trajdata import TrajdataConverter
 
-t = TrajdataConverter()
+t = TrajdataConverter(
+    dataset_path='./nuscene_mini_prime',
+    out_path='./output_dir',
+    dataset_name='nusc_mini'
+)
 
 loader: iter[omega_prime.Recording] = t.yield_recordings()
 
+t.convert(n_workers=1)
+
 ```
+
+### Notice
+
+> [!NOTE]
+> The fork is maintained by the [**Institute for Automotive Engineering (ika) at RWTH Aachen University**](https://www.ika.rwth-aachen.de/).
+> We cover a wide variety of research topics within our [*Vehicle Intelligence & Automated Driving*](https://www.ika.rwth-aachen.de/en/competences/fields-of-research/vehicle-intelligence-automated-driving.html) domain.
+> If you would like to learn more about how we can support your automated driving or robotics efforts, feel free to reach out to us!
+>
+> :email: ***opensource@ika.rwth-aachen.de***
 
 ### Announcements
 
