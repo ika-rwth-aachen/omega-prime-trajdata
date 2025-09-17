@@ -1,5 +1,4 @@
 from trajdata import UnifiedDataset
-from torch.utils.data import DataLoader
 import numpy as np
 import betterosi
 import shapely
@@ -10,8 +9,16 @@ from omega_prime.converters.converter import DatasetConverter
 from typing import Annotated
 import typer
 from pathlib import Path
-from tqdm.auto import tqdm
+from joblib import Parallel, delayed
+from tqdm_joblib import tqdm_joblib
 
+from dataclasses import dataclass
+from typing import Any
+from matplotlib import style
+
+
+sbw = style.library["seaborn-v0_8-whitegrid"].copy()
+style.core.update_nested_dict(style.library, {"seaborn-whitegrid": sbw})
 
 def is_intersection(lane, road_lane_elements):
     lane_center_line = shapely.LineString(lane.center.points[:, :2])
@@ -132,79 +139,76 @@ def get_polyline_midpoint(polyline) -> np.ndarray:
 
 
 
-def map_for_scenario(map, map_name, map_cache):
-    if map_name not in map_cache:
-        print(map_name)
-        _ = map.traffic_light_status
-        pedestrian_crosswalk_elements = dict(map.elements[MapElementType.PED_CROSSWALK].items())
-        road_lane_elements = dict(map.elements[MapElementType.ROAD_LANE].items())
+def map_for_scenario(map, map_name):
+    _ = map.traffic_light_status
+    pedestrian_crosswalk_elements = dict(map.elements[MapElementType.PED_CROSSWALK].items())
+    road_lane_elements = dict(map.elements[MapElementType.ROAD_LANE].items())
 
-        classified_lanes = classify_lanes(road_lane_elements)
+    classified_lanes = classify_lanes(road_lane_elements)
+    
+    for lane_id, lane in road_lane_elements.items():
+        lane.is_intersection = lane_id in classified_lanes["intersection"]
         
-        for lane_id, lane in road_lane_elements.items():
-            lane.is_intersection = lane_id in classified_lanes["intersection"]
-            
-        mapped_lid = {r.id: i for i,r in enumerate(map.lanes)}
-        mapped_cw = {r.id: i for i,r in enumerate(pedestrian_crosswalk_elements.values())}
+    mapped_lid = {r.id: i for i,r in enumerate(map.lanes)}
+    mapped_cw = {r.id: i for i,r in enumerate(pedestrian_crosswalk_elements.values())}
 
-        map_gt = betterosi.GroundTruth(
-            version=betterosi.InterfaceVersion(version_major=3, version_minor=7, version_patch=0),
-            road_marking=[
-                betterosi.RoadMarking(
-                    id=betterosi.Identifier(value=mapped_cw[crosswalk.id]),
-                    base=betterosi.BaseStationary(
-                        dimension=betterosi.Dimension3D(*[float(o) for o in get_polygon_dimensions(crosswalk.polygon)]),
-                        position=betterosi.Vector3D(*[float(o) for o in get_polyline_midpoint(crosswalk.polygon)]),
-                    ),
-                )
-                for crosswalk in pedestrian_crosswalk_elements.values()
-            ],
-            lane_boundary=[betterosi.LaneBoundary( # right lane
-                id=betterosi.Identifier(value=b_id),
-                boundary_line=[betterosi.LaneBoundaryBoundaryPoint(position=betterosi.Vector3D(x=x, y=y, z=y)) for x,y,z in polyline.points],
-                classification=betterosi.LaneBoundaryClassification(
-                    type=betterosi.LaneBoundaryClassificationType.SOLID_LINE,
-                    color=betterosi.LaneBoundaryClassificationColor.WHITE
-                )
-            ) for lane in road_lane_elements.values() for b_id, polyline in [
-                (mapped_lid[lane.id]*2, lane.right_edge),
-                (mapped_lid[lane.id]*2+1, lane.left_edge)
-            ] if polyline is not None],
-            lane=[
-                betterosi.Lane(
-                    classification=betterosi.LaneClassification(
-                        centerline=[
-                            betterosi.Vector3D(x=float(x), y=float(y), z=float(z))
-                            for x, y, z, yaw in lane.center.points
-                        ],
-                        right_lane_boundary_id = [betterosi.Identifier(value=mapped_lid[lane.id]*2)] if lane.right_edge is not None else [],
-                        left_lane_boundary_id = [betterosi.Identifier(value=mapped_lid[lane.id]*2+1)] if lane.left_edge is not None else [],
-                        centerline_is_driving_direction=True,  # checked and the centerline is always in driving direction
-                        type=betterosi.LaneClassificationType.TYPE_INTERSECTION
-                        if lane.is_intersection
-                        else betterosi.LaneClassificationType.TYPE_DRIVING,
-                        left_adjacent_lane_id=[
-                            betterosi.Identifier(value=mapped_lid[lane_id]) for lane_id in lane.adj_lanes_left
-                        ],
-                        right_adjacent_lane_id=[
-                            betterosi.Identifier(value=mapped_lid[lane_id]) for lane_id in lane.adj_lanes_right
-                        ],
-                        lane_pairing=[
-                            betterosi.LaneClassificationLanePairing(
-                                antecessor_lane_id=betterosi.Identifier(value=mapped_lid[prev_lane_id]),
-                                successor_lane_id=betterosi.Identifier(value=mapped_lid[next_lane_id]),
-                            )
-                            for prev_lane_id in lane.prev_lanes
-                            for next_lane_id in lane.next_lanes
-                        ],
-                    ),
-                    id=betterosi.Identifier(value=mapped_lid[lane.id]),
-                )
-                for lane in road_lane_elements.values()
-            ],
-        )
-        map_cache[map_name] = map_gt
-    return map_cache[map_name]
+    map_gt = betterosi.GroundTruth(
+        version=betterosi.InterfaceVersion(version_major=3, version_minor=7, version_patch=0),
+        road_marking=[
+            betterosi.RoadMarking(
+                id=betterosi.Identifier(value=mapped_cw[crosswalk.id]),
+                base=betterosi.BaseStationary(
+                    dimension=betterosi.Dimension3D(*[float(o) for o in get_polygon_dimensions(crosswalk.polygon)]),
+                    position=betterosi.Vector3D(*[float(o) for o in get_polyline_midpoint(crosswalk.polygon)]),
+                ),
+            )
+            for crosswalk in pedestrian_crosswalk_elements.values()
+        ],
+        lane_boundary=[betterosi.LaneBoundary( # right lane
+            id=betterosi.Identifier(value=b_id),
+            boundary_line=[betterosi.LaneBoundaryBoundaryPoint(position=betterosi.Vector3D(x=x, y=y, z=y)) for x,y,z in polyline.points],
+            classification=betterosi.LaneBoundaryClassification(
+                type=betterosi.LaneBoundaryClassificationType.SOLID_LINE,
+                color=betterosi.LaneBoundaryClassificationColor.WHITE
+            )
+        ) for lane in road_lane_elements.values() for b_id, polyline in [
+            (mapped_lid[lane.id]*2, lane.right_edge),
+            (mapped_lid[lane.id]*2+1, lane.left_edge)
+        ] if polyline is not None],
+        lane=[
+            betterosi.Lane(
+                classification=betterosi.LaneClassification(
+                    centerline=[
+                        betterosi.Vector3D(x=float(x), y=float(y), z=float(z))
+                        for x, y, z, yaw in lane.center.points
+                    ],
+                    right_lane_boundary_id = [betterosi.Identifier(value=mapped_lid[lane.id]*2)] if lane.right_edge is not None else [],
+                    left_lane_boundary_id = [betterosi.Identifier(value=mapped_lid[lane.id]*2+1)] if lane.left_edge is not None else [],
+                    centerline_is_driving_direction=True,  # checked and the centerline is always in driving direction
+                    type=betterosi.LaneClassificationType.TYPE_INTERSECTION
+                    if lane.is_intersection
+                    else betterosi.LaneClassificationType.TYPE_DRIVING,
+                    left_adjacent_lane_id=[
+                        betterosi.Identifier(value=mapped_lid[lane_id]) for lane_id in lane.adj_lanes_left
+                    ],
+                    right_adjacent_lane_id=[
+                        betterosi.Identifier(value=mapped_lid[lane_id]) for lane_id in lane.adj_lanes_right
+                    ],
+                    lane_pairing=[
+                        betterosi.LaneClassificationLanePairing(
+                            antecessor_lane_id=betterosi.Identifier(value=mapped_lid[prev_lane_id]),
+                            successor_lane_id=betterosi.Identifier(value=mapped_lid[next_lane_id]),
+                        )
+                        for prev_lane_id in lane.prev_lanes
+                        for next_lane_id in lane.next_lanes
+                    ],
+                ),
+                id=betterosi.Identifier(value=mapped_lid[lane.id]),
+            )
+            for lane in road_lane_elements.values()
+        ],
+    )
+    return map_name, map_gt
 
 
 
@@ -248,6 +252,8 @@ def from_batch_info(i, agent_type, extent, state,transform):
                 ),
                 **kwargs
             )
+    
+
 def agentbatchelement_to_omega(name, batch_element, map_cache):
     gts = []
     t_index = 0
@@ -284,7 +290,10 @@ def agentbatchelement_to_omega(name, batch_element, map_cache):
                 moving_object=objs,
             ))
             t_index += 1
-    map_gt = map_for_scenario(batch_element.vec_map, batch_element.vec_map.map_id, map_cache)
+    map_gt = map_cache.get(batch_element.vec_map.map_id, None)
+    if map_gt is None:
+        _, map_gt = map_for_scenario(batch_element.vec_map, batch_element.vec_map.map_id)
+        map_cache[batch_element.vec_map.map_id] = map_gt
     gts[0].lane = map_gt.lane
     gts[0].road_marking = map_gt.road_marking
     r = omega_prime.Recording.from_osi_gts(gts)
@@ -296,6 +305,47 @@ def agentbatchelement_to_omega(name, batch_element, map_cache):
 
 
 
+
+@dataclass
+class Batch:
+    agent_history_np: np.array
+    agent_history_extent_np: np.array
+    neighbor_histories: np.array
+    neighbor_history_extents: np.array
+    neighbor_history_lens_np: np.array
+    agent_future_np: np.array
+    agent_future_extent_np: np.array
+    neighbor_futures: list[np.array]
+    neighbor_future_extents: list[np.array]
+    neighbor_future_lens_np: np.array
+    agent_from_world_tf: np.array
+    neighbor_types_np: np.array
+    dt: float
+    vec_map: Any
+    scene_id: str
+    agent_type: Any
+    
+    @classmethod
+    def from_trajdata(cls, b):
+        return cls(
+            agent_history_np=b.agent_history_np.as_ndarray(),
+            agent_history_extent_np=b.agent_history_extent_np,
+            neighbor_histories=[o.as_ndarray() for o in b.neighbor_histories],
+            neighbor_history_extents=b.neighbor_history_extents,
+            neighbor_history_lens_np=b.neighbor_history_lens_np,
+            agent_future_np=b.agent_future_np.as_ndarray(),
+            agent_future_extent_np=b.agent_future_extent_np,
+            neighbor_futures=[o.as_ndarray() for o in b.neighbor_futures],
+            neighbor_future_extents=b.neighbor_future_extents,
+            neighbor_future_lens_np=b.neighbor_future_lens_np,
+            agent_from_world_tf=b.agent_from_world_tf,
+            neighbor_types_np=b.neighbor_types_np,
+            dt=b.dt,
+            vec_map=b.vec_map,
+            scene_id=b.scene_id,
+            agent_type=b.agent_type,
+    )
+
 class TrajdataConverter(DatasetConverter):
     def __init__(
         self, 
@@ -303,8 +353,7 @@ class TrajdataConverter(DatasetConverter):
         out_path: str, 
         dataset_name,  
         keep_in_memory=True,
-        n_workers=0,
-        preload_maps: bool = True
+        n_workers=1,
     ) -> None:
         super().__init__(dataset_path, out_path, n_workers=n_workers)
         self.dataset_name=dataset_name
@@ -330,23 +379,36 @@ class TrajdataConverter(DatasetConverter):
                 "keep_in_memory": keep_in_memory,
             }
         )
-        self.dataloader = DataLoader(
-            self.dataset,
-            batch_size=1,
-            shuffle=True,
-            collate_fn=self.dataset.get_collate_fn(),
-            num_workers=n_workers, # This can be set to 0 for single-threaded loading, if desired.
-        )
-        if preload_maps:
-            for vm_name, vm in tqdm(self.dataset._map_api.maps.items(), desc='Preloading maps'):
-                map_for_scenario(vm, vm_name, self.map_cache)
+        
 
+
+        if keep_in_memory:
+            with tqdm_joblib(desc="Preload Maps", total=len(self.dataset._map_api.maps)):
+                maps_jobs = Parallel(n_jobs=4)(delayed(map_for_scenario)(vm, vm_name) for vm_name, vm in self.dataset._map_api.maps.items())
+                self.map_cache = {name: map for name, map in maps_jobs}
+
+
+    def __getstate__(self):
+        # Copy the instance’s dict
+        state = self.__dict__.copy()
+        # Remove the attribute you don’t want
+        if "dataset" in state:
+            del state["dataset"]
+        return state
+
+    def __setstate__(self, state):
+        # Restore instance attributes
+        self.__dict__.update(state)
+        # Optionally restore excluded attributes with a default
+        self.dataset = None
+        
     def get_source_recordings(self):
         self.len = self.dataset.num_scenes()
-        return range(self.len)
+        for i in range(self.len):
+            yield Batch.from_trajdata(self.dataset[self.dataset._data_index._cumulative_lengths[i]])
 
-    def get_recordings(self, i):
-        batch_element = self.dataset[self.dataset._data_index._cumulative_lengths[i]]
+    def get_recordings(self, batch):
+        batch_element = batch
         yield batch_element.scene_id, batch_element
 
     def get_recording_name(self, recording) -> str:
@@ -372,6 +434,7 @@ class TrajdataConverter(DatasetConverter):
             ),
         ],
         dataset_name: Annotated[str, typer.Argument(help='trajdata name of the dataset (see https://github.com/NVlabs/trajdata?tab=readme-ov-file#supported-datasets)')],  
+        n_workers: Annotated[int, typer.Option(help="Set to -1 for n_cpus-1 workers.")] = 1,
         skip_existing: Annotated[bool, typer.Option(help="Only convert not yet converted files")] = False,
         write_log: Annotated[bool, typer.Option(help="Write a log file with the conversion process")] = False,
 
@@ -379,5 +442,5 @@ class TrajdataConverter(DatasetConverter):
     ):
         Path(output_path).mkdir(exist_ok=True)
         cls(dataset_path=dataset_path, out_path=output_path, n_workers=0, keep_in_memory=keep_map_in_memory, dataset_name=dataset_name, preload_maps=keep_map_in_memory).convert(
-            save_as_parquet=False, skip_existing=skip_existing, write_log=write_log, n_workers=1
+            save_as_parquet=False, skip_existing=skip_existing, write_log=write_log, n_workers=n_workers
         )
