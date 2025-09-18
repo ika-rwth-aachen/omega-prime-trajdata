@@ -8,9 +8,11 @@ This is a fork of [trajdata](github.com/NVlabs/trajdata). Modifications are unde
 This fork uses [betterproto2](https://github.com/betterproto/python-betterproto2) to work with protobuf files and it generates code from the proto files on installation. This has the benefit that it reduces the likelihood of dependency conflicts on installation.
 In addition, a converter to the [omega-prime format](https://github.com/ika-rwth-aachen/omega-prime) is included.
 
-`uv pip install omega-prime-trajdata[av2,interaction,nusc,waymo,vod]`
+`uv pip install omega-prime-trajdata[av2,interaction,waymo,vod]`
 
 (`lyft` not supported currently since l5kit depencies conflict with the other packages. `interaction` installs `lanelet2` wich is only available up to python 3.12 and on linux. You could try to install `lanelet2x` instead on windows.
+
+To use `nusc` you have to manually install `nuscenes-devkit>=1.2.0`, since it has a dependency of `numpy<=2.0` which clashes with our dependencies. In our experience, installing `nuscenes-devkit` manually in an environment with `numpy>=2.0` works fine.
 
 Run conversion with:
 
