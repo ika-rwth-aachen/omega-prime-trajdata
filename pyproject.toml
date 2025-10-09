@@ -4,6 +4,11 @@ profile = "black"
 [build-system]
 requires = ["hatchling", "hatch-build-scripts", "ruff", "betterproto2_compiler","grpcio-tools"]
 build-backend = "hatchling.build"
+
+[tool.uv.extra-build-dependencies]
+betterosi = [{requirement = "betterproto2_compiler", match-runtime=true}]
+omega-prime-trajdata = [{requirement = "betterproto2_compiler", match-runtime=true}]
+
 [[tool.hatch.build.hooks.build-scripts.scripts]]
 commands = [
     "python gen_protos.py"
@@ -39,7 +44,8 @@ dependencies = [
     "scipy>=1.9.0",
     "opencv-python>=4.5.0",
     "shapely>=2.0.0",
-    "betterproto2 (>=0.5,<1)",
+    "betterproto2 (>=0.8,<1)",
+    "betterproto2_compiler",
     "omega-prime>=0.1.19"
 ]
 
