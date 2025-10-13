@@ -40,21 +40,22 @@ def const_lambda(const_val: Any) -> Any:
 
 class WaymoDataset(RawDataset):
     def compute_metadata(self, env_name: str, data_dir: str) -> EnvMetadata:
-        if env_name == "waymo_train":
-            # Waymo possibilities are the Cartesian product of these
-            dataset_parts = [("train",)]
-            scene_split_map = defaultdict(partial(const_lambda, const_val="train"))
-
-        elif env_name == "waymo_val":
-            # Waymo possibilities are the Cartesian product of these
-            dataset_parts = [("val",)]
-            scene_split_map = defaultdict(partial(const_lambda, const_val="val"))
-
-        elif env_name == "waymo_test":
-            # Waymo possibilities are the Cartesian product of these
-            dataset_parts = [("test",)]
-            scene_split_map = defaultdict(partial(const_lambda, const_val="test"))
-
+        found = False
+        combinations = {'train': ['train','training','training_20s'],
+                             'val': ['val', 'validation'],
+                             'test': ['test','testing','testing_20s']}
+        for split, names in combinations.items():
+            for n in names:
+                if env_name == f"waymo_{n}":
+                    found = True
+                    # Waymo possibilities are the Cartesian product of these
+                    dataset_parts = [(n,)]
+                    scene_split_map = defaultdict(partial(const_lambda, const_val=split))
+                    break
+            if found:
+                break
+        if not found:
+            raise RuntimeError(f'{env_name} is not valid. Choose one of {[v for l in combinations.values() for v in l]}')
         return EnvMetadata(
             name=env_name,
             data_dir=data_dir,

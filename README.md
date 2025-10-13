@@ -14,6 +14,8 @@ In addition, a converter to the [omega-prime format](https://github.com/ika-rwth
 
 To use `nusc` you have to manually install `nuscenes-devkit>=1.2.0`, since it has a dependency of `numpy<=2.0` which clashes with our dependencies. In our experience, installing `nuscenes-devkit` manually in an environment with `numpy>=2.0` works fine.
 
+This library was tested with the `nusc_mini`, `waymo_training_20s` and `waymo_validation`.
+
 Run conversion with:
 
 `omega-prime from-trajdata ./dataset_path ./output_path dataset_name`

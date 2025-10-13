@@ -79,7 +79,13 @@ class WaymoScenarios:
         if split or not split_path.is_dir():
             self.split_scenarios()
         else:
-            self.num_scenarios = len(os.listdir(split_path))
+            files = os.listdir(split_path)
+            if len(files) == 0:
+                files = os.listdir(self.source_dir/self.name)
+            else:
+                files = sorted(files)
+            self.num_scenarios = len(files)
+            self._files = files
 
     def download_dataset(self) -> None:
         # check_call("snap install google-cloud-sdk --classic".split())
@@ -133,11 +139,7 @@ class WaymoScenarios:
             )
 
     def get_filename(self, data_idx):
-        return (
-            self.source_dir
-            / f"{self.name}_splitted"
-            / f"{self.name}_splitted_{data_idx}.tfrecords"
-        )
+        return self._files[data_idx]
 
 
 def extract_vectorized(
