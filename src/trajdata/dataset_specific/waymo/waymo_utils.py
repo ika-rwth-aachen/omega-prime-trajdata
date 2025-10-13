@@ -78,12 +78,11 @@ class WaymoScenarios:
         split_path = self.source_dir / (self.name + "_splitted")
         if split or not split_path.is_dir():
             self.split_scenarios()
+            self._files = sorted(os.listdir(split_path))
         else:
-            files = os.listdir(split_path)
+            files = sorted(os.listdir(split_path))
             if len(files) == 0:
                 files = os.listdir(self.source_dir/self.name)
-            else:
-                files = sorted(files)
             self.num_scenarios = len(files)
             self._files = files
 
