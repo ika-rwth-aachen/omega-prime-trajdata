@@ -441,6 +441,6 @@ class TrajdataConverter(DatasetConverter):
         keep_map_in_memory: Annotated[bool, typer.Option(help="Turn off for waymo dataset since they have map for each scene.")]=True,
     ):
         Path(output_path).mkdir(exist_ok=True)
-        cls(dataset_path=dataset_path, out_path=output_path, n_workers=0, keep_in_memory=keep_map_in_memory, dataset_name=dataset_name, preload_maps=keep_map_in_memory).convert(
+        cls(dataset_path=dataset_path, out_path=output_path, n_workers=0, keep_in_memory=keep_map_in_memory, dataset_name=dataset_name).convert(
             save_as_parquet=False, skip_existing=skip_existing, write_log=write_log, n_workers=n_workers
         )
