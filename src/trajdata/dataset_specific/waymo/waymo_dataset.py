@@ -74,6 +74,8 @@ class WaymoDataset(RawDataset):
             dataset_name = "validation"
         elif self.name == "waymo_test":
             dataset_name = "testing"
+        elif self.name[6:] in WAYMO_DATASET_NAMES:
+            dataset_name = self.name[6:]
         self.dataset_obj = WaymoScenarios(
             dataset_name=dataset_name, source_dir=self.metadata.data_dir
         )
