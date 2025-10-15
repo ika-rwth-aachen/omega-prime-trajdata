@@ -289,8 +289,7 @@ class WaymoDataset(RawDataset):
         ] + extent_cols
 
         # Removing agents with only one detection.
-        all_agent_data_df.drop(index=agents_to_remove, inplace=True)
-
+        all_agent_data_df = all_agent_data_df[~all_agent_data_df.index.isin(agents_to_remove)]
         # Changing the agent_id dtype to str
         all_agent_data_df.reset_index(inplace=True)
         all_agent_data_df["agent_id"] = all_agent_data_df["agent_id"].astype(str)

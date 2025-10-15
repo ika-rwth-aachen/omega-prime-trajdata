@@ -76,13 +76,14 @@ class WaymoScenarios:
             self.download_dataset()
 
         split_path = self.source_dir / (self.name + "_splitted")
+        
         if split or not split_path.is_dir():
             self.split_scenarios()
-            self._files = sorted(os.listdir(split_path))
+            self._files = sorted([split_path/o for o in os.listdir(split_path)], key=lambda x: int(x.split('_')[1].split('.')[0]))
         else:
-            files = sorted(os.listdir(split_path))
+            files = sorted([split_path/o for o in os.listdir(split_path)], key=lambda x: int(x.split('_')[1].split('.')[0]))
             if len(files) == 0:
-                files = os.listdir(self.source_dir/self.name)
+                files = [self.source_dir/self.name/o for o in os.listdir(self.source_dir/self.name)]
             self.num_scenarios = len(files)
             self._files = files
 
@@ -265,13 +266,13 @@ def extract_vectorized(
 
 
 def translate_agent_type(agent_type):
-    if agent_type == waymo.Track.ObjectType.TYPE_VEHICLE:
+    if agent_type == waymo.TrackObjectType.TYPE_VEHICLE:
         return AgentType.VEHICLE
-    elif agent_type == waymo.Track.ObjectType.TYPE_PEDESTRIAN:
+    elif agent_type == waymo.TrackObjectType.TYPE_PEDESTRIAN:
         return AgentType.PEDESTRIAN
-    elif agent_type == waymo.Track.ObjectType.TYPE_CYCLIST:
+    elif agent_type == waymo.TrackObjectType.TYPE_CYCLIST:
         return AgentType.BICYCLE
-    elif agent_type == waymo.Track.ObjectType.OTHER:
+    elif agent_type == waymo.TrackObjectType.TYPE_OTHER:
         return AgentType.UNKNOWN
     return -1
 

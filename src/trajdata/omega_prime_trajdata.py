@@ -246,7 +246,14 @@ def from_batch_info(i, agent_type, extent, state,transform):
                 base=betterosi.BaseMoving(
                     dimension=betterosi.Dimension3D(length=float(length), width=float(width), height=float(height)),
                     position=betterosi.Vector3D(x=float(xy[0]), y=float(xy[1]), z=0),
-                    orientation=betterosi.Orientation3D(roll=0, pitch=0, yaw=float(np.arcsin(state[6])+np.arccos(transform[0,0]))),
+                    orientation=betterosi.Orientation3D(roll=0, pitch=0, yaw=float(
+                        np.arctan2(
+                            state[6],
+                            state[7]
+                        ) + np.arctan2(
+                            transform[1,0], # sin(alpha)
+                            transform[0,0] # cos(alpha)
+                                                                                                                            ))),
                     velocity=betterosi.Vector3D(x=float(vel[0]), y=float(vel[1]), z=0),
                     acceleration=betterosi.Vector3D(x=float(acc[0]), y=float(acc[1]), z=0),
                 ),
@@ -267,7 +274,7 @@ def agentbatchelement_to_omega(name, batch_element, map_cache):
         for ti in range(agent.shape[0]):
             objs = []
             objs.append(from_batch_info(
-                0,
+                1,
                 agent_type=batch_element.agent_type,
                 extent=extent[ti],
                 state=agent[ti],
@@ -276,7 +283,7 @@ def agentbatchelement_to_omega(name, batch_element, map_cache):
             for i in range(len(batch_element.neighbor_types_np)):
                 if ti < neigh_len[i] and not np.isnan(neigh[i][ti][0]):
                     objs.append(from_batch_info(
-                        i+1,
+                        i+2,
                         agent_type=batch_element.neighbor_types_np[i],
                         extent=neigh_extents[i][ti],
                         state=neigh[i][ti],
@@ -286,7 +293,7 @@ def agentbatchelement_to_omega(name, batch_element, map_cache):
             gts.append(betterosi.GroundTruth(
                 version=betterosi.InterfaceVersion(version_major=3, version_minor=7, version_patch=9),
                 timestamp=betterosi.Timestamp(seconds=int(nanos // int(1e9)), nanos=int(nanos % int(1e9))),
-                host_vehicle_id=betterosi.Identifier(value=0),
+                host_vehicle_id=betterosi.Identifier(value=1),
                 moving_object=objs,
             ))
             t_index += 1
@@ -352,7 +359,7 @@ class TrajdataConverter(DatasetConverter):
         dataset_path: str, 
         out_path: str, 
         dataset_name,  
-        keep_in_memory=True,
+        keep_in_memory=False,
         n_workers=1,
     ) -> None:
         super().__init__(dataset_path, out_path, n_workers=n_workers)

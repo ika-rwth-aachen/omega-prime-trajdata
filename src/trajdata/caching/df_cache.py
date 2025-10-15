@@ -24,6 +24,7 @@ import numpy as np
 import pandas as pd
 import torch
 import zarr
+import shutil
 
 from trajdata.augmentation.augmentation import Augmentation, DatasetAugmentation
 from trajdata.caching.scene_cache import SceneCache
@@ -791,6 +792,7 @@ class DataFrameCache(SceneCache):
             dill.dump(vector_map.search_rtrees, f)
 
         # Saving the rasterized map data.
+        shutil.rmtree(raster_map_path, ignore_errors=True)
         zarr.save(raster_map_path, rasterized_map.data)
 
         # Saving the rasterized map metadata.

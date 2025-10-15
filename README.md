@@ -12,7 +12,7 @@ In addition, a converter to the [omega-prime format](https://github.com/ika-rwth
 
 (`lyft` not supported currently since l5kit depencies conflict with the other packages. `interaction` installs `lanelet2` wich is only available up to python 3.12 and on linux. You could try to install `lanelet2x` instead on windows.
 
-To use `nusc` you have to manually install `nuscenes-devkit>=1.2.0`, since it has a dependency of `numpy<=2.0` which clashes with our dependencies. In our experience, installing `nuscenes-devkit` manually in an environment with `numpy>=2.0` works fine.
+To use `nusc` you have to manually install `nuscenes-devkit>=1.2.0`, since it has a dependency of `numpy<=2.0` which clashes with our dependencies. After installing `nuscenes` you can reinstall `numpy>=2`. In our experience, installing `nuscenes-devkit` manually in an environment with `numpy>=2.0` works fine.
 
 This library was tested with the `nusc_mini`, `waymo_training_20s` and `waymo_validation`.
 
@@ -23,7 +23,7 @@ Run conversion with:
 `dataset_name` corresponds to the name in the dataset table below. E.g., for the `nusc_mini` dataset:
 
 
-`omega-prime from-trajdata ./nusc_mini ./output_folder nusc_mini`
+`omega-prime from-trajdata ./nuScenes ./output_folder nusc_mini`
 
 From python you can do the following:
 ```python
@@ -43,7 +43,8 @@ t.convert(n_workers=1)
 ```
 
 If you have issues with a version mismatch of `betterproto2` and `betterproto2_compiler`, you can try and run `uv pip install --upgrade --force-reinstall omega-prime-trajdata betterosi`
-
+### NuScenes
+`
 ### Notice
 
 > [!NOTE]
