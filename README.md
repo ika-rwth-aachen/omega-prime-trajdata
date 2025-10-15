@@ -43,8 +43,8 @@ t.convert(n_workers=1)
 ```
 
 If you have issues with a version mismatch of `betterproto2` and `betterproto2_compiler`, you can try and run `uv pip install --upgrade --force-reinstall omega-prime-trajdata betterosi`
-### NuScenes
-`
+
+
 ### Notice
 
 > [!NOTE]
