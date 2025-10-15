@@ -52,7 +52,7 @@ dependencies = [
 [project.optional-dependencies]
 av2 = ["av2==0.2.1"]
 dev = ["black", "isort", "pytest", "pytest-xdist", "twine", "build"]
-interaction = ["lanelet2"]
+#interaction = ["lanelet2"]
 #lyft = ["l5kit==1.5.0"]
 #nusc = ["nuscenes-devkit>=1.2.0"]
 waymo = ["tensorflow>=2.19.0", "intervaltree"]

@@ -14,7 +14,7 @@ In addition, a converter to the [omega-prime format](https://github.com/ika-rwth
 
 To use `nusc` you have to manually install `nuscenes-devkit>=1.2.0`, since it has a dependency of `numpy<=2.0` which clashes with our dependencies. After installing `nuscenes` you can reinstall `numpy>=2`. In our experience, installing `nuscenes-devkit` manually in an environment with `numpy>=2.0` works fine.
 
-This library was tested with the `nusc_mini`, `waymo_training_20s` and `waymo_validation`.
+This library was tested with the `nusc_mini`, `nuplan_mini`, `waymo_training_20s` and `waymo_validation`.
 
 Run conversion with:
 
@@ -44,6 +44,35 @@ t.convert(n_workers=1)
 
 If you have issues with a version mismatch of `betterproto2` and `betterproto2_compiler`, you can try and run `uv pip install --upgrade --force-reinstall omega-prime-trajdata betterosi`
 
+
+
+## Datasets
+Download and place the data as shown in [./DATASETS.md](./DATASETS.md).
+
+### NuScenes
+```bash
+uv pip install omega-prime-trajdata
+uv pip install nuscenes-devkit # install numpy<2
+uv pip install --upgrade numpy
+```
+
+`omega-prime from-trajdata ./nuScene
+### NuPlan
+`uv pip install omega-prime-trajdata`
+`uv pip install git+https://github.com/motional/nuplan-devkit.git aioboto3 retry`
+
+`omega-prime from-trajdata ./nuPlan/nuplan-v1.1 ./output nuplan_mini`
+
+### WOD-Motion
+`uv pip install omega-prime-trajdata[waymo]`
+
+`omega-prime from-trajdata ./wod-motion ./output waymo_test`
+
+
+### AV2
+`uv pip install omega-prime[av2]`
+
+`omega-prime from-trajdata ./av2 ./output av2_motion_forecasting`
 
 ### Notice
 

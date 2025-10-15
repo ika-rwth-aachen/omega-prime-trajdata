@@ -201,7 +201,7 @@ def nuplan_type_to_unified_type(nuplan_type: str) -> AgentType:
 
 
 def create_splits_logs() -> Dict[str, List[str]]:
-    yaml_filepath = Path(common_cfg.__path__[0]) / "splitter" / "nuplan.yaml"
+    yaml_filepath = Path(__file__).parent / "nuplan.yaml"
     with open(yaml_filepath, "r") as stream:
         splits = yaml.safe_load(stream)
 
