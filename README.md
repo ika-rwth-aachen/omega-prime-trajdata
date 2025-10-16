@@ -8,7 +8,7 @@ This is a fork of [trajdata](github.com/NVlabs/trajdata). Modifications are unde
 This fork uses [betterproto2](https://github.com/betterproto/python-betterproto2) to work with protobuf files and it generates code from the proto files on installation. This has the benefit that it reduces the likelihood of dependency conflicts on installation.
 In addition, a converter to the [omega-prime format](https://github.com/ika-rwth-aachen/omega-prime) is included.
 
-`uv pip install omega-prime-trajdata[av2,interaction,waymo,vod]`
+`uv pip install omega-prime-trajdata[av2,interaction,waymo]`
 
 (`lyft` not supported currently since l5kit depencies conflict with the other packages. `interaction` installs `lanelet2` wich is only available up to python 3.12 and on linux. You could try to install `lanelet2x` instead on windows.
 
@@ -31,8 +31,8 @@ import omega_prime
 from trajdata import TrajdataConverter
 
 t = TrajdataConverter(
-    dataset_path='./nuscene_mini_prime',
-    out_path='./output_dir',
+    dataset_path='./nuscene_mini',
+    out_path='./output_folder',
     dataset_name='nusc_mini'
 )
 
@@ -46,8 +46,15 @@ If you have issues with a version mismatch of `betterproto2` and `betterproto2_c
 
 
 
+## Usage with Docker
+
+```
+docker run --rm -v ./local_dataset_path:/input -v ./local_output_folder:/output ghcr.io/ika-rwth-aachen/omega-prime-trajdata:main /input /output dataset_name
+```
+
 ## Datasets
 Download and place the data as shown in [./DATASETS.md](./DATASETS.md).
+
 
 ### NuScenes
 ```bash
