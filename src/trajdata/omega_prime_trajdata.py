@@ -196,8 +196,8 @@ def map_for_scenario(map, map_name):
                     ],
                     lane_pairing=[
                         betterosi.LaneClassificationLanePairing(
-                            antecessor_lane_id=betterosi.Identifier(value=mapped_lid[prev_lane_id]),
-                            successor_lane_id=betterosi.Identifier(value=mapped_lid[next_lane_id]),
+                            antecessor_lane_id=betterosi.Identifier(value=mapped_lid[prev_lane_id]) if prev_lane_id in mapped_lid else None,
+                            successor_lane_id=betterosi.Identifier(value=mapped_lid[next_lane_id]) if next_lane_id in mapped_lid else None,
                         )
                         for prev_lane_id in lane.prev_lanes
                         for next_lane_id in lane.next_lanes

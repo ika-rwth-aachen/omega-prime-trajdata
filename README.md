@@ -14,7 +14,7 @@ In addition, a converter to the [omega-prime format](https://github.com/ika-rwth
 
 To use `nusc` you have to manually install `nuscenes-devkit>=1.2.0`, since it has a dependency of `numpy<=2.0` which clashes with our dependencies. After installing `nuscenes` you can reinstall `numpy>=2`. In our experience, installing `nuscenes-devkit` manually in an environment with `numpy>=2.0` works fine.
 
-This library was tested with the `nusc_mini`, `nuplan_mini`, `waymo_training_20s` and `waymo_validation`.
+This library was tested with the `av2_motion_forecasting`, `nusc_mini`, `nuplan_mini`, `waymo_training_20s`, `waymo_validation`.
 
 Run conversion with:
 
