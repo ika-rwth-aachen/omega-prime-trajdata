@@ -23,7 +23,7 @@ classifiers = [
 ]
 name = "omega-prime-trajdata"
 
-version = "1.4.1.4"
+version = "1.4.1.5"
 authors = [{ name = "Michael Schuldes", email = "michael.schuldes@rwth-aachen.de" }]
 description = "A fork of trajdata using betterproto2 and including a converter to omega-prime"
 readme = "README.md"
