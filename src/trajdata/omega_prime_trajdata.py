@@ -189,10 +189,10 @@ def map_for_scenario(map, map_name):
                     if lane.is_intersection
                     else betterosi.LaneClassificationType.TYPE_DRIVING,
                     left_adjacent_lane_id=[
-                        betterosi.Identifier(value=mapped_lid[lane_id]) for lane_id in lane.adj_lanes_left
+                        betterosi.Identifier(value=mapped_lid[lane_id]) for lane_id in lane.adj_lanes_left if lane_id in mapped_lid
                     ],
                     right_adjacent_lane_id=[
-                        betterosi.Identifier(value=mapped_lid[lane_id]) for lane_id in lane.adj_lanes_right
+                        betterosi.Identifier(value=mapped_lid[lane_id]) for lane_id in lane.adj_lanes_right if lane_id in mapped_lid
                     ],
                     lane_pairing=[
                         betterosi.LaneClassificationLanePairing(
