@@ -1,7 +1,10 @@
 
+<img src="https://github.com/ika-rwth-aachen/omega-prime-trajdata/blob/main/omega-prime-trajdata.svg?raw=True" align="left" height=120px style="margin:10px;">
+
 # omega-prime-trajdata - A Fork of trajdata: A Unified Interface to Multiple Human Trajectory Datasets
 
 This is a fork of [trajdata](github.com/NVlabs/trajdata). Modifications are under the same license as trajdata - Apache Licenese 2.0.
+https://github.com/ika-rwth-aachen/omega-prime-trajdata/blob/main
 
 ## Whats different in this fork?
 
