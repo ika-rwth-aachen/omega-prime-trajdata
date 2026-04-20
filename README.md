@@ -304,6 +304,21 @@ for t in range(1, sim_scene.scene.length_timesteps):
 
 `examples/sim_example.py` contains a more comprehensive example which initializes a simulation from a scene in the nuScenes mini dataset, steps through it by replaying agents' GT motions, and computes metrics based on scene statistics (e.g., displacement error from the original GT data, velocity/acceleration/jerk histograms).
 
+# Acknowledgements
+
+This package is developed as part of the [SYNERGIES project](https://synergies-ccam.eu).
+
+<img src="https://raw.githubusercontent.com/ika-rwth-aachen/omega-prime-trajdata/refs/heads/main/img/synergies.svg"
+style="width:2in" />
+
+
+
+Funded by the European Union. Views and opinions expressed are however those of the author(s) only and do not necessarily reflect those of the European Union or European Climate, Infrastructure and Environment Executive Agency (CINEA). Neither the European Union nor the granting authority can be held responsible for them. 
+
+<img src="https://raw.githubusercontent.com/ika-rwth-aachen/omega-prime-trajdata/refs/heads/main/img/funded_by_eu.svg"
+style="width:4in" />
+
+
 ## Citation
 
 If you use this software, please cite it as follows:
